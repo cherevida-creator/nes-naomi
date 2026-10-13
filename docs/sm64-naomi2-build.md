@@ -1,14 +1,19 @@
-# SM64 Naomi 2 build status
+# SM64 Naomi 2 integration status
 
-This repository does not yet contain a playable Super Mario 64 port. The upstream Dreamcast-Projects/sm64-port-lat tree is Dreamcast-oriented; its TARGET_DC=1 output is not a Naomi NetDimm image.
+The repository is still the NES emulator project; it does not yet build a playable Super Mario 64 game. The integration now contains a Player 1 controller overlay for Dreamcast-Projects/sm64-port-lat, pinned at commit e4574b577609a51c6b7ca7914d2f25436831eede.
 
-This CI milestone verifies only the shared input adapter:
+## Integrated and checked
 
-- JVS Player 1 joystick directions map to the N64 analog stick.
-- Diagonals are normalized to avoid faster diagonal movement; opposite directions cancel.
-- Buttons 1–6 map to A, B, Z, C-left, C-right and R; Player 1 Start maps to Start.
-- GitHub Actions runs host assertions and cross-compiles the adapter with an SH-4 toolchain from a KallistiOS development image.
+- JVS Player 1 joystick directions map to the N64 analog stick, with normalized diagonals and opposite directions cancelling.
+- Buttons 1–6 map to A, B, Z, C-left, C-right and R. Player 1 Start maps to Start.
+- The controller polls libnaomi once for each SM64 controller read and clears stale input when polling fails.
+- tools/integrate_sm64_naomi.py applies a guarded, pinned overlay to the upstream ControllerAPI registry. GitHub Actions verifies the patch point and compiles the controller for host and SH-4.
+- The existing mapping assertions run on the host.
 
-The workflow does not package or upload a game BIN. A real NetDimm image still needs a Naomi 2 video/audio backend, JVS input polling integration, Naomi startup/link configuration, and a NetDimm image packager. Those pieces must be built and verified before calling an artifact playable. No ROM is stored or published; asset extraction uses the user's base ROM kept outside the public repository.
+## Still needed for a NetDimm BIN
 
-Upstream source reference: Dreamcast-Projects/sm64-port-lat, inspected at commit e4574b577609a51c6b7ca7914d2f25436831eede.
+The integration does not provide Naomi 2 startup or Maple initialization, video rendering, audio output, a Naomi-target build system, or NetDimm packaging. The upstream Dreamcast TARGET_DC build is not a Naomi image. The current Actions workflow checks the controller object and mapping only; it does not build the full game or produce a BIN.
+
+The original SM64 engine, graphics and audio have not been rewritten or replaced. No commercial ROM is stored in the public repository; any asset extraction must use the user's base ROM locally. A BIN will only be called functional after the complete Naomi image is built and verified in an emulator or on Naomi 2 hardware.
+
+Upstream source: Dreamcast-Projects/sm64-port-lat at e4574b577609a51c6b7ca7914d2f25436831eede.
