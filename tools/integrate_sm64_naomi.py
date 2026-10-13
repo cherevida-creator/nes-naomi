@@ -42,6 +42,11 @@ def main() -> None:
     shutil.copy2(source / "port/controller_naomi.c", controller_dir / "controller_naomi.c")
     shutil.copy2(source / "port/controller_naomi.h", controller_dir / "controller_naomi.h")
     shutil.copy2(source / "port/naomi_maple_kos_compat.h", controller_dir / "naomi_maple_kos_compat.h")
+    shutil.copy2(source / "port/sm64_naomi_oscont.h", controller_dir / "sm64_naomi_oscont.h")
+    oscont = controller_dir / "sm64_naomi_oscont.h"
+    text = oscont.read_text()
+    text = replace_once(text, "#include <naomi/maple.h>", '#include "maple_naomi.h"', "Naomi OSCont header")
+    oscont.write_text(text)
 
     maple_header = (libnaomi / "libnaomi/naomi/maple.h").read_text()
     (controller_dir / "maple_naomi.h").write_text(maple_header)
