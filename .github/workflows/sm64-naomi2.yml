@@ -5,11 +5,13 @@ on:
     paths:
       - ".github/workflows/sm64-naomi2.yml"
       - "port/sm64_naomi_controls.h"
+      - "port/sm64_naomi_jvs.h"
       - "tests/test_sm64_naomi_controls.c"
   pull_request:
     paths:
       - ".github/workflows/sm64-naomi2.yml"
       - "port/sm64_naomi_controls.h"
+      - "port/sm64_naomi_jvs.h"
       - "tests/test_sm64_naomi_controls.c"
   workflow_dispatch:
 
@@ -18,13 +20,20 @@ permissions:
 
 jobs:
   controls-host:
-    name: Host control-map tests
+    name: Host tests against libnaomi JVS API
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Compile and run control-map tests
+      - name: Checkout pinned libnaomi headers
+        uses: actions/checkout@v4
+        with:
+          repository: DragonMinded/libnaomi
+          ref: fadc8536d3c115b53277c50dca5d001dfbccc30d
+          path: libnaomi
+      - name: Compile and run Player 1 JVS tests
         run: |
-          cc -std=c11 -Wall -Wextra -Werror -Iport tests/test_sm64_naomi_controls.c -o /tmp/test-sm64-controls
+          cc -std=c11 -Wall -Wextra -Werror -Iport -Ilibnaomi/libnaomi \
+            tests/test_sm64_naomi_controls.c -o /tmp/test-sm64-controls
           /tmp/test-sm64-controls
 
   controls-sh4:
@@ -32,6 +41,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Checkout pinned libnaomi headers
+        uses: actions/checkout@v4
+        with:
+          repository: DragonMinded/libnaomi
+          ref: fadc8536d3c115b53277c50dca5d001dfbccc30d
+          path: libnaomi
       - name: Compile and verify SH-4 object
         run: |
           docker run --rm \
@@ -40,10 +55,10 @@ jobs:
             einsteinx2/dcdev-kos-toolchain:gcc-9 \
             /bin/bash -c '
               set -eu
-              echo "PATH=$PATH"
               command -v sh-elf-gcc
               sh-elf-gcc --version | head -n 1
-              sh-elf-gcc -std=c11 -Wall -Wextra -Werror -ffreestanding -Iport \
+              sh-elf-gcc -std=c11 -Wall -Wextra -Werror -ffreestanding \
+                -Iport -Ilibnaomi/libnaomi \
                 -c tests/test_sm64_naomi_controls.c -o /tmp/sm64-controls-sh4.o
               sh-elf-readelf -h /tmp/sm64-controls-sh4.o | grep -E "Machine:.*(SH|SuperH)"
             '
