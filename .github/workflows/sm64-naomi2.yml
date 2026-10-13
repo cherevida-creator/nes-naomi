@@ -38,8 +38,9 @@ jobs:
             -v "$GITHUB_WORKSPACE:/src" \
             -w /src \
             einsteinx2/dcdev-kos-toolchain:gcc-9 \
-            /bin/bash -lc '
+            /bin/bash -c '
               set -eu
+              echo "PATH=$PATH"
               command -v sh-elf-gcc
               sh-elf-gcc --version | head -n 1
               sh-elf-gcc -std=c11 -Wall -Wextra -Werror -ffreestanding -Iport \
