@@ -46,6 +46,7 @@ def main() -> None:
     shutil.copy2(source / "port/naomi_maple_kos_compat.h", controller_dir / "naomi_maple_kos_compat.h")
     shutil.copy2(source / "port/sm64_naomi_oscont.h", controller_dir / "sm64_naomi_oscont.h")
     shutil.copy2(source / "port/sm64_naomi_jvs.h", controller_dir / "sm64_naomi_jvs.h")
+    shutil.copy2(source / "port/sm64_naomi_controls.h", controller_dir / "sm64_naomi_controls.h")
     for header_name, label in (("sm64_naomi_jvs.h", "Naomi JVS header"),
                                ("sm64_naomi_oscont.h", "Naomi OSCont header")):
         header = controller_dir / header_name
@@ -90,10 +91,16 @@ def main() -> None:
     entry = controller_dir / "controller_entry_point.c"
     text = entry.read_text()
     text = replace_once(text, "#if !defined(TARGET_PSP) && !defined(TARGET_DC)\n#include \"controller_keyboard.h\"\n#endif", "#if !defined(TARGET_PSP) && !defined(TARGET_DC) && !defined(TARGET_NAOMI)\n#include \"controller_keyboard.h\"\n#endif", "keyboard include guard")
-    text = replace_once(text, "#elif defined(TARGET_DC)\n#include \"controller_dc.h\"\n#else", "#elif defined(TARGET_DC)\n#include \"controller_dc.h\"\n#elif defined(TARGET_NAOMI)\n#include \"controller_naomi.h\"\n#else", "Naomi controller include")
+    text = replace_once(text, "#elif defined(TARGET_DC)\n#include \"controller_dc.h\"\n#else", "#elif defined(TARGET_NAOMI)\n#include \"controller_naomi.h\"\n#elif defined(TARGET_DC)\n#include \"controller_dc.h\"\n#else", "Naomi controller include")
     text = replace_once(text, "#if !defined(TARGET_PSP) && !defined(TARGET_DC)\n    &controller_recorded_tas,\n    &controller_keyboard,\n#endif", "#if !defined(TARGET_PSP) && !defined(TARGET_DC) && !defined(TARGET_NAOMI)\n    &controller_recorded_tas,\n    &controller_keyboard,\n#endif", "keyboard registry guard")
-    text = replace_once(text, "#elif defined(TARGET_DC)\n    &controller_dc,\n#else", "#elif defined(TARGET_DC)\n    &controller_dc,\n#elif defined(TARGET_NAOMI)\n    &controller_naomi,\n#else", "Naomi controller registration")
+    text = replace_once(text, "#elif defined(TARGET_DC)\n    &controller_dc,\n#else", "#elif defined(TARGET_NAOMI)\n    &controller_naomi,\n#elif defined(TARGET_DC)\n    &controller_dc,\n#else", "Naomi controller registration")
     entry.write_text(text)
+
+    gfx = upstream / "src/pc/gfx/gfx_dc.c"
+    text = replace_once(gfx.read_text(), "#include <dc/video.h>\n", "#include <dc/video.h>\n#include <kos/thread.h>\n#include <kos/timer.h>\n", "KOS thread and timer declarations")
+    gfx.write_text(text)
+    text = replace_once(gfx.read_text(), "extern uint64_t timer_ms_gettime64(void);\n", "", "KOS timer inline")
+    gfx.write_text(text)
 
     makefile = upstream / "Makefile"
     text = replace_once(makefile.read_text(), "PLATFORM_CFLAGS  := $(KOS_CFLAGS) -DTARGET_DC -DNDEBUG -Wall -Wextra -g3", "PLATFORM_CFLAGS  := $(KOS_CFLAGS) -DTARGET_DC -DTARGET_NAOMI -DNDEBUG -Wall -Wextra -g3", "Naomi KOS target flags")
