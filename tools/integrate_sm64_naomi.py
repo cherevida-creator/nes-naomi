@@ -43,6 +43,11 @@ def main() -> None:
     shutil.copy2(source / "port/controller_naomi.h", controller_dir / "controller_naomi.h")
     shutil.copy2(source / "port/naomi_maple_kos_compat.h", controller_dir / "naomi_maple_kos_compat.h")
     shutil.copy2(source / "port/sm64_naomi_oscont.h", controller_dir / "sm64_naomi_oscont.h")
+    shutil.copy2(source / "port/sm64_naomi_jvs.h", controller_dir / "sm64_naomi_jvs.h")
+    jvs = controller_dir / "sm64_naomi_jvs.h"
+    text = jvs.read_text()
+    text = replace_once(text, "#include <naomi/maple.h>", '#include "maple_naomi.h"', "Naomi JVS header")
+    jvs.write_text(text)
     oscont = controller_dir / "sm64_naomi_oscont.h"
     text = oscont.read_text()
     text = replace_once(text, "#include <naomi/maple.h>", '#include "maple_naomi.h"', "Naomi OSCont header")
