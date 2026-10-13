@@ -1,19 +1,20 @@
-# SM64 Naomi 2 integration status
+## SM64 para Naomi 2: estado del port
 
-The repository is still the NES emulator project; it does not yet build a playable Super Mario 64 game. The integration now contains a Player 1 controller overlay for Dreamcast-Projects/sm64-port-lat, pinned at commit e4574b577609a51c6b7ca7914d2f25436831eede.
+### Integración y controles
 
-## Integrated and checked
+- El port parte de Dreamcast-Projects/sm64-port-lat (e4574b577609a51c6b7ca7914d2f25436831eede) y conserva su código, gráficos, niveles, música y efectos de sonido.
+- Player 1 JVS se traduce a entrada N64; las diagonales se normalizan y las direcciones opuestas se cancelan. Botones JVS 1–6: A, B, Z, C-left, C-right y R; Start: Start.
+- La ruta Naomi se selecciona antes que la Dreamcast cuando ambas macros están definidas. El puente Maple/JVS usa la integración fijada de DragonMinded/libnaomi (fadc8536d3c115b53277c50dca5d001dfbccc30d) y KallistiOS.
+- Las ejecuciones [Actions #39](https://github.com/cherevida-creator/nes-naomi/actions/runs/38372940558) y [#40](https://github.com/cherevida-creator/nes-naomi/actions/runs/38372946496) pasaron los tests de controles/prioridad Naomi y compilaron los objetos SH-4 del controlador y el puente KallistiOS.
 
-- JVS Player 1 joystick directions map to the N64 analog stick, with normalized diagonals and opposite directions cancelling.
-- Buttons 1–6 map to A, B, Z, C-left, C-right and R. Player 1 Start maps to Start.
-- The controller polls libnaomi once for each SM64 controller read and clears stale input when polling fails.
-- tools/integrate_sm64_naomi.py applies a guarded, pinned overlay to the upstream ControllerAPI registry. GitHub Actions verifies the patch point and compiles the controller for host and SH-4.
-- The existing mapping assertions run on the host.
+### Compilación local y paquete candidato
 
-## Still needed for a NetDimm BIN
+Se compiló localmente el toolchain SH-4, KallistiOS para Naomi, GLdc, libAL y el juego completo con los assets extraídos de la ROM del usuario. El ELF resultante es SH-4 y se empaquetó como una imagen ROM Naomi con makerom. rominfo reconoce el encabezado, la sección de programa y su dirección de carga/entrada. La imagen candidata mide 12.549.084 bytes.
 
-The integration does not provide Naomi 2 startup or Maple initialization, video rendering, audio output, a Naomi-target build system, or NetDimm packaging. The upstream Dreamcast TARGET_DC build is not a Naomi image. The current Actions workflow checks the controller object and mapping only; it does not build the full game or produce a BIN.
+La ROM comercial y los assets extraídos permanecen locales; no se suben a GitHub ni se pasan a Actions. Actions valida la integración y el código del controlador, pero no reproduce el build completo porque necesita esa ROM privada.
 
-The original SM64 engine, graphics and audio have not been rewritten or replaced. No commercial ROM is stored in the public repository; any asset extraction must use the user's base ROM locally. A BIN will only be called functional after the complete Naomi image is built and verified in an emulator or on Naomi 2 hardware.
+### Límite de verificación
 
-Upstream source: Dreamcast-Projects/sm64-port-lat at e4574b577609a51c6b7ca7914d2f25436831eede.
+El BIN candidato no se ha arrancado en hardware Naomi 2 ni en un emulador Naomi 2 con BIOS. Por tanto, se verificaron la compilación, la arquitectura SH-4 y la estructura de la imagen ROM, pero no se declara el BIN funcional. Tampoco se ha probado la ruta real de carga por NetDIMM en una máquina.
+
+Para cerrar esa validación falta arrancar esta imagen en Flycast/Naomi o hardware Naomi 2 con BIOS apropiada, y comprobar vídeo, audio AICA y controles durante el juego. No hay un emulador o BIOS Naomi disponible en el entorno de compilación actual. Hasta esa prueba, trátese como candidato experimental, no como entrega funcional.
