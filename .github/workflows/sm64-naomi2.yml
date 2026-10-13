@@ -1,0 +1,85 @@
+name: SM64 Naomi 2 controller integration
+
+on:
+  push:
+    paths:
+      - ".github/workflows/sm64-naomi2.yml"
+      - "port/controller_naomi.c"
+      - "port/controller_naomi.h"
+      - "port/sm64_naomi_controls.h"
+      - "port/sm64_naomi_jvs.h"
+      - "port/sm64_naomi_oscont.h"
+      - "tools/integrate_sm64_naomi.py"
+      - "tests/test_sm64_naomi_controls.c"
+  pull_request:
+    paths:
+      - ".github/workflows/sm64-naomi2.yml"
+      - "port/controller_naomi.c"
+      - "port/controller_naomi.h"
+      - "port/sm64_naomi_controls.h"
+      - "port/sm64_naomi_jvs.h"
+      - "port/sm64_naomi_oscont.h"
+      - "tools/integrate_sm64_naomi.py"
+      - "tests/test_sm64_naomi_controls.c"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sm64-controller-host:
+    name: Patch pinned SM64 and compile controller on host
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout pinned Dreamcast SM64 source
+        uses: actions/checkout@v4
+        with:
+          repository: Dreamcast-Projects/sm64-port-lat
+          ref: e4574b577609a51c6b7ca7914d2f25436831eede
+          path: upstream/sm64
+      - name: Checkout pinned libnaomi headers
+        uses: actions/checkout@v4
+        with:
+          repository: DragonMinded/libnaomi
+          ref: fadc8536d3c115b53277c50dca5d001dfbccc30d
+          path: libnaomi
+      - name: Apply Naomi Player 1 controller to upstream registry
+        run: python3 tools/integrate_sm64_naomi.py --upstream upstream/sm64
+      - name: Verify registry and compile integrated controller
+        run: |
+          grep -Fq '&controller_naomi' upstream/sm64/src/pc/controller/controller_entry_point.c
+          cc -std=c11 -Wall -Wextra -Werror -DTARGET_NAOMI             -Iupstream/sm64/include -Iupstream/sm64/src/pc/controller             -Ilibnaomi/libnaomi -Iport             -c upstream/sm64/src/pc/controller/controller_naomi.c             -o /tmp/sm64-controller-host.o
+      - name: Compile and run Player 1 mapping tests
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -Iport -Ilibnaomi/libnaomi             tests/test_sm64_naomi_controls.c -o /tmp/test-sm64-controls
+          /tmp/test-sm64-controls
+
+  sm64-controller-sh4:
+    name: SH-4 compile integrated SM64 controller with KallistiOS toolchain
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout pinned Dreamcast SM64 source
+        uses: actions/checkout@v4
+        with:
+          repository: Dreamcast-Projects/sm64-port-lat
+          ref: e4574b577609a51c6b7ca7914d2f25436831eede
+          path: upstream/sm64
+      - name: Checkout pinned libnaomi headers
+        uses: actions/checkout@v4
+        with:
+          repository: DragonMinded/libnaomi
+          ref: fadc8536d3c115b53277c50dca5d001dfbccc30d
+          path: libnaomi
+      - name: Apply Naomi Player 1 controller to upstream registry
+        run: python3 tools/integrate_sm64_naomi.py --upstream upstream/sm64
+      - name: Cross-compile and verify SH-4 object
+        run: |
+          docker run --rm             -v "$GITHUB_WORKSPACE:/src"             -w /src             einsteinx2/dcdev-kos-toolchain:gcc-9             /bin/bash -c '
+              set -eu
+              command -v sh-elf-gcc
+              sh-elf-gcc --version | head -n 1
+              sh-elf-gcc -std=c11 -Wall -Wextra -Werror -ffreestanding                 -DTARGET_NAOMI                 -Iupstream/sm64/include -Iupstream/sm64/src/pc/controller                 -Ilibnaomi/libnaomi -Iport                 -c upstream/sm64/src/pc/controller/controller_naomi.c                 -o /tmp/sm64-controller-sh4.o
+              sh-elf-readelf -h /tmp/sm64-controller-sh4.o | grep -E "Machine:.*(SH|SuperH)"
+            '
