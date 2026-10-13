@@ -37,8 +37,8 @@ jobs:
           docker run --rm \
             -v "$GITHUB_WORKSPACE:/src" \
             -w /src \
-            einsteinx2/dcdev-kos-toolchain:latest \
-            sh -lc '
+            einsteinx2/dcdev-kos-toolchain:gcc-9 \
+            /bin/bash -lc '
               set -eu
               command -v sh-elf-gcc
               sh-elf-gcc --version | head -n 1
