@@ -1,13 +1,7 @@
-#include <PR/os_cont.h>
+#include "controller_naomi.h"
 #include <naomi/maple.h>
 
 #include "sm64_naomi_oscont.h"
-
-/* ABI used by src/pc/controller/controller_entry_point.c. */
-struct ControllerAPI {
-    void (*init)(void);
-    void (*read)(OSContPad *pad);
-};
 
 static void controller_naomi_init(void)
 {
