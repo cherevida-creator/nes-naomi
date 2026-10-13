@@ -1,0 +1,48 @@
+name: SM64 Naomi 2 groundwork
+
+on:
+  push:
+    paths:
+      - ".github/workflows/sm64-naomi2.yml"
+      - "port/sm64_naomi_controls.h"
+      - "tests/test_sm64_naomi_controls.c"
+  pull_request:
+    paths:
+      - ".github/workflows/sm64-naomi2.yml"
+      - "port/sm64_naomi_controls.h"
+      - "tests/test_sm64_naomi_controls.c"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  controls-host:
+    name: Host control-map tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and run control-map tests
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -Iport tests/test_sm64_naomi_controls.c -o /tmp/test-sm64-controls
+          /tmp/test-sm64-controls
+
+  controls-sh4:
+    name: SH-4 cross-compile with KallistiOS toolchain
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and verify SH-4 object
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/src" \
+            -w /src \
+            einsteinx2/dcdev-kos-toolchain:latest \
+            sh -lc '
+              set -eu
+              command -v sh-elf-gcc
+              sh-elf-gcc --version | head -n 1
+              sh-elf-gcc -std=c11 -Wall -Wextra -Werror -ffreestanding -Iport \
+                -c tests/test_sm64_naomi_controls.c -o /tmp/sm64-controls-sh4.o
+              sh-elf-readelf -h /tmp/sm64-controls-sh4.o | grep -E "Machine:.*(SH|SuperH)"
+            '
