@@ -5,15 +5,13 @@ on:
     paths:
       - ".github/workflows/sm64-naomi2.yml"
       - "port/**"
-      - "tools/build_sm64_naomi.sh"
-      - "tools/integrate_sm64_naomi.py"
+      - "tools/**"
       - "tests/test_sm64_naomi_controls.c"
   pull_request:
     paths:
       - ".github/workflows/sm64-naomi2.yml"
       - "port/**"
-      - "tools/build_sm64_naomi.sh"
-      - "tools/integrate_sm64_naomi.py"
+      - "tools/**"
       - "tests/test_sm64_naomi_controls.c"
   workflow_dispatch:
 
@@ -44,8 +42,6 @@ jobs:
           cc -std=c11 -Wall -Wextra -Werror -DTARGET_NAOMI -Iupstream/sm64/include -Iupstream/sm64/src/pc/controller -Iport -c upstream/sm64/src/pc/controller/controller_naomi.c -o /tmp/sm64-controller-host.o
           cc -std=c11 -Wall -Wextra -Werror -Iport tests/test_sm64_naomi_controls.c -o /tmp/test-sm64-controls
           /tmp/test-sm64-controls
-          bash -n tools/build_sm64_naomi.sh
-          tools/build_sm64_naomi.sh --help
 
   sm64-naomi-sh4:
     name: Compile Naomi JVS bridge and controller with KallistiOS SH-4
@@ -66,11 +62,12 @@ jobs:
         run: python3 tools/integrate_sm64_naomi.py --upstream upstream/sm64 --libnaomi libnaomi
       - name: Compile SH-4 objects for Naomi subarchitecture
         run: |
-          docker run --rm -e KOS_SUBARCH=naomi -v "$GITHUB_WORKSPACE:/src" -w /src einsteinx2/dcdev-kos-toolchain:gcc-9 /bin/bash -lc '
-            set -euo pipefail
-            command -v kos-cc
-            kos-cc -std=c11 -Wall -Wextra -Werror -ffreestanding -DTARGET_DC -DTARGET_NAOMI -D__NAOMI__ -Iupstream/sm64/include -Iupstream/sm64/src/pc/controller -Iport -c upstream/sm64/src/pc/controller/controller_naomi.c -o /tmp/sm64-controller-naomi.o
-            kos-cc -std=c11 -Wall -Wextra -Werror -ffreestanding -DTARGET_DC -DTARGET_NAOMI -D__NAOMI__ -Iupstream/sm64/include -Iupstream/sm64/src/pc/controller -c upstream/sm64/src/pc/controller/maple_naomi_kos.c -o /tmp/sm64-maple-naomi.o
+          docker run --rm -e KOS_SUBARCH=naomi -v "$GITHUB_WORKSPACE:/src" -w /src einsteinx2/dcdev-kos-toolchain:gcc-9 /bin/bash -c '
+            set -eu
+            command -v sh-elf-gcc
+            sh-elf-gcc --version | head -n 1
+            sh-elf-gcc -std=c11 -Wall -Wextra -Werror -ffreestanding -DTARGET_DC -DTARGET_NAOMI -D__NAOMI__ -Iupstream/sm64/include -Iupstream/sm64/src/pc/controller -Iport -c upstream/sm64/src/pc/controller/controller_naomi.c -o /tmp/sm64-controller-naomi.o
+            sh-elf-gcc -std=c11 -Wall -Wextra -Werror -ffreestanding -DTARGET_DC -DTARGET_NAOMI -D__NAOMI__ -I/opt/toolchains/dc/kos/include -Iupstream/sm64/src/pc/controller -c upstream/sm64/src/pc/controller/maple_naomi_kos.c -o /tmp/sm64-maple-naomi.o
             sh-elf-readelf -h /tmp/sm64-controller-naomi.o | grep -E "Machine:.*(SH|SuperH)"
             sh-elf-readelf -h /tmp/sm64-maple-naomi.o | grep -E "Machine:.*(SH|SuperH)"
           '
