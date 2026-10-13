@@ -66,9 +66,9 @@ jobs:
             set -eu
             command -v sh-elf-gcc
             sh-elf-gcc --version | head -n 1
-            SH4_KOS_FLAGS="-DTARGET_DC -DTARGET_NAOMI -D__NAOMI__ -D_arch_dreamcast=1 -D_arch_sub_naomi=1"
-            sh-elf-gcc -std=c11 -Wall -Wextra -Werror -ffreestanding $SH4_KOS_FLAGS -I/opt/toolchains/dc/kos/include -Iupstream/sm64/include -Iupstream/sm64/src/pc/controller -Iport -c upstream/sm64/src/pc/controller/controller_naomi.c -o /tmp/sm64-controller-naomi.o
-            sh-elf-gcc -std=c11 -Wall -Wextra -Werror -Wno-error=sign-compare -ffreestanding $SH4_KOS_FLAGS -I/opt/toolchains/dc/kos/include -Iupstream/sm64/src/pc/controller -c upstream/sm64/src/pc/controller/maple_naomi_kos.c -o /tmp/sm64-maple-naomi.o
+            SH4_KOS_FLAGS="-DTARGET_DC -DTARGET_NAOMI -D__NAOMI__ -D_arch_dreamcast=1 -D_arch_sub_naomi=1 -I/opt/toolchains/dc/kos/include -I/opt/toolchains/dc/kos/kernel/arch/dreamcast/include -I/opt/toolchains/dc/kos/addons/include"
+            sh-elf-gcc -std=c11 -Wall -Wextra -Werror -ffreestanding $SH4_KOS_FLAGS -Iupstream/sm64/include -Iupstream/sm64/src/pc/controller -Iport -c upstream/sm64/src/pc/controller/controller_naomi.c -o /tmp/sm64-controller-naomi.o
+            sh-elf-gcc -std=c11 -Wall -Wextra -Werror -ffreestanding $SH4_KOS_FLAGS -Iupstream/sm64/src/pc/controller -c upstream/sm64/src/pc/controller/maple_naomi_kos.c -o /tmp/sm64-maple-naomi.o
             sh-elf-readelf -h /tmp/sm64-controller-naomi.o | grep -E "Machine:.*(SH|SuperH)"
             sh-elf-readelf -h /tmp/sm64-maple-naomi.o | grep -E "Machine:.*(SH|SuperH)"
           '
