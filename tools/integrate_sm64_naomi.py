@@ -71,6 +71,12 @@ def main() -> None:
         "for(unsigned int i = 1; i < length + 3; i++)",
         "JVS packet length signedness",
     )
+    maple_source = replace_once(
+        maple_source,
+        "#define MAPLE_BASE 0xA05F6C00",
+        "#ifndef MAPLE_BASE\n#define MAPLE_BASE 0xA05F6C00\n#endif",
+        "KOS Maple register compatibility",
+    )
     maple_source = "#if defined(__NAOMI__) && defined(TARGET_NAOMI)\n" + maple_source + "\n#endif\n"
     (controller_dir / "maple_naomi_kos.c").write_text(maple_source)
 
