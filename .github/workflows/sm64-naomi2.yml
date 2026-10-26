@@ -6,13 +6,17 @@ on:
       - ".github/workflows/sm64-naomi2.yml"
       - "port/**"
       - "tools/**"
+      - "sm64-naomi2-smoke/**"
       - "tests/test_sm64_naomi_controls.c"
+      - "tests/test_mark_naomi2_header.py"
   pull_request:
     paths:
       - ".github/workflows/sm64-naomi2.yml"
       - "port/**"
       - "tools/**"
+      - "sm64-naomi2-smoke/**"
       - "tests/test_sm64_naomi_controls.c"
+      - "tests/test_mark_naomi2_header.py"
   workflow_dispatch:
 
 permissions:
@@ -53,6 +57,7 @@ jobs:
           cc -std=c11 -Wall -Wextra -Werror -DTARGET_NAOMI -Iupstream/sm64/include -Iupstream/sm64/src/pc/controller -Iport -c upstream/sm64/src/pc/controller/controller_naomi.c -o /tmp/sm64-controller-host.o
           cc -std=c11 -Wall -Wextra -Werror -Ilibnaomi/libnaomi -Iport tests/test_sm64_naomi_controls.c -o /tmp/test-sm64-controls
           /tmp/test-sm64-controls
+          python3 tests/test_mark_naomi2_header.py
 
   sm64-naomi-sh4:
     name: Compile Naomi JVS bridge and controller with KallistiOS SH-4
