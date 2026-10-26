@@ -1,0 +1,8 @@
+# Private ROM inputs and generated, asset-bearing release images
+/baserom.us.z64
+/mario64-naomi2.bin
+
+# Pinned source checkouts and locally built tools
+/vendor/sm64-port-lat/
+/vendor/libnaomi/
+/vendor/naomibintool
