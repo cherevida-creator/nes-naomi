@@ -5,7 +5,7 @@
 - El port parte de Dreamcast-Projects/sm64-port-lat (e4574b577609a51c6b7ca7914d2f25436831eede) y conserva su código, gráficos, niveles, música y efectos de sonido.
 - Player 1 JVS se traduce a entrada N64; las diagonales se normalizan y las direcciones opuestas se cancelan. Botones JVS 1–6: A, B, Z, C-left, C-right y R; Start: Start.
 - La ruta Naomi se selecciona antes que la Dreamcast cuando ambas macros están definidas. El puente Maple/JVS usa la integración fijada de DragonMinded/libnaomi (fadc8536d3c115b53277c50dca5d001dfbccc30d) y KallistiOS.
-- Las ejecuciones [Actions #39](https://github.com/cherevida-creator/nes-naomi/actions/runs/38372940558) y [#40](https://github.com/cherevida-creator/nes-naomi/actions/runs/38372946496) pasaron los tests de controles/prioridad Naomi y compilaron los objetos SH-4 del controlador y el puente KallistiOS.
+- La ejecución [Actions #45](https://github.com/cherevida-creator/nes-naomi/actions/runs/40323173443) pasó los tests de controles/prioridad Naomi y compiló los objetos SH-4 del controlador y el puente KallistiOS. No compila ni enlaza el juego completo.
 
 ### Paquete candidato y diagnóstico
 
@@ -21,7 +21,7 @@ El diagnóstico de controles es un programa independiente de libnaomi: muestra e
 
 El registro Flycast más reciente reconoce `Super Mario 64` y selecciona el BIOS Naomi 2. Solo informa de que no encuentra `epr-23607c.ic27`; no contiene `Fatal: SH4 exception when blocked` ni registros de excepción. Por tanto, este archivo no permite atribuir el fallo del juego a una excepción SH-4. Flycast se cierra limpiamente en el propio registro.
 
-El BIN candidato tiene su sección de carga y sus entradas en `0x8c020000`. El Makefile oficial de libnaomi usa `0x0c021000` como dirección inicial para sus ROM Naomi. Esto confirma que el contenedor candidato conserva la dirección de enlace P1 usada por el build Dreamcast/KOS, en vez de la dirección de carga del ejemplo Naomi. Es una incompatibilidad concreta que hay que corregir en el enlace y el encabezado; cambiar únicamente `NAOMI` por `Naomi2` no la corrige. Todavía no se ha generado ni arrancado un BIN con esa corrección.
+El BIN candidato declara su sección y punto de entrada en `0x8c020000`; el Makefile de libnaomi usa por defecto `0x0c021000` en sus ejemplos. Es una diferencia que merece verificarse al integrar el cargador Naomi con el ejecutable KOS: `0x8c...` es un alias P1 de RAM física `0x0c...`, así que comparar solo los números no demuestra por sí mismo que el encabezado sea inválido ni identifica la causa del error 01. Cambiar la etiqueta `NAOMI` por `Naomi2` tampoco corrige el payload. Hace falta generar el paquete con direcciones coherentes y arrancarlo en Flycast para confirmar o descartar esta hipótesis.
 
 En el entorno de trabajo actual no están instalados Docker, `sh-elf-gcc` ni KallistiOS (`KOS_BASE`). Al intentar reconstruir el upstream con `make TARGET_DC=1`, Make termina en `Makefile:952: /Makefile.rules: No such file or directory`. Así que aquí no se ha regenerado un BIN de Mario corregido.
 
