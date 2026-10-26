@@ -97,7 +97,7 @@ def main() -> None:
     entry.write_text(text)
 
     gfx = upstream / "src/pc/gfx/gfx_dc.c"
-    text = replace_once(gfx.read_text(), "#include <dc/video.h>\n", "#include <dc/video.h>\n#include <kos/thread.h>\n#include <kos/timer.h>\n", "KOS thread and timer declarations")
+    text = replace_once(gfx.read_text(), "#include <dc/video.h>\n", "#include <dc/video.h>\n#include <kos/thread.h>\n#include <arch/timer.h>\n", "KOS thread and timer declarations")
     gfx.write_text(text)
     text = replace_once(gfx.read_text(), "extern uint64_t timer_ms_gettime64(void);\n", "", "KOS timer inline")
     gfx.write_text(text)
