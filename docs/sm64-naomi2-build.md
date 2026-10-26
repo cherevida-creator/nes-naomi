@@ -21,6 +21,8 @@ El diagnóstico de controles es un programa independiente de libnaomi: muestra e
 
 El registro Flycast más reciente reconoce `Super Mario 64` y selecciona el BIOS Naomi 2. Solo informa de que no encuentra `epr-23607c.ic27`; no contiene `Fatal: SH4 exception when blocked` ni registros de excepción. Por tanto, este archivo no permite atribuir el fallo del juego a una excepción SH-4. Flycast se cierra limpiamente en el propio registro.
 
+El BIN candidato tiene su sección de carga y sus entradas en `0x8c020000`. El Makefile oficial de libnaomi usa `0x0c021000` como dirección inicial para sus ROM Naomi. Esto confirma que el contenedor candidato conserva la dirección de enlace P1 usada por el build Dreamcast/KOS, en vez de la dirección de carga del ejemplo Naomi. Es una incompatibilidad concreta que hay que corregir en el enlace y el encabezado; cambiar únicamente `NAOMI` por `Naomi2` no la corrige. Todavía no se ha generado ni arrancado un BIN con esa corrección.
+
 En el entorno de trabajo actual no están instalados Docker, `sh-elf-gcc` ni KallistiOS (`KOS_BASE`). Al intentar reconstruir el upstream con `make TARGET_DC=1`, Make termina en `Makefile:952: /Makefile.rules: No such file or directory`. Así que aquí no se ha regenerado un BIN de Mario corregido.
 
 Para cerrar esa validación hay que localizar y corregir la excepción SH-4, compilar el juego completo para Naomi 2 y comprobar vídeo, audio AICA y controles en Flycast o hardware. Hasta entonces, trátese como candidato experimental, no como entrega funcional.
