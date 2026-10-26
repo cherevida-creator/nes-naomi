@@ -103,7 +103,8 @@ def main() -> None:
     gfx.write_text(text)
 
     makefile = upstream / "Makefile"
-    text = replace_once(makefile.read_text(), "PLATFORM_CFLAGS  := $(KOS_CFLAGS) -DTARGET_DC -DNDEBUG -Wall -Wextra -g3", "PLATFORM_CFLAGS  := $(KOS_CFLAGS) -DTARGET_DC -DTARGET_NAOMI -DNDEBUG -Wall -Wextra -g3", "Naomi KOS target flags")
+    text = replace_once(makefile.read_text(), "PLATFORM_CFLAGS  := $(KOS_CFLAGS) -DTARGET_DC -DNDEBUG -Wall -Wextra -g3", "PLATFORM_CFLAGS  := $(KOS_CFLAGS) -DTARGET_DC -DTARGET_NAOMI -D__NAOMI__ -DNDEBUG -Wall -Wextra -g3", "Naomi KOS target flags")
+    text = replace_once(text, "GFX_LDFLAGS += -lGL -lAL -lm", "GFX_LDFLAGS += -lGL -lm", "KOS native audio linker flags")
     makefile.write_text(text)
     print(f"Applied Naomi/KOS overlay to SM64 {UPSTREAM_COMMIT}")
 
