@@ -1,28 +1,27 @@
-## SM64 para Naomi 2: estado del port
+# Super Mario 64 para Naomi 2
 
-### Integración y controles
+## Qué contiene el port
 
-- El port parte de Dreamcast-Projects/sm64-port-lat (e4574b577609a51c6b7ca7914d2f25436831eede) y conserva su código, gráficos, niveles, música y efectos de sonido.
-- Player 1 JVS se traduce a entrada N64; las diagonales se normalizan y las direcciones opuestas se cancelan. Botones JVS 1–6: A, B, Z, C-left, C-right y R; Start: Start.
-- La ruta Naomi se selecciona antes que la Dreamcast cuando ambas macros están definidas. El puente Maple/JVS usa la integración fijada de DragonMinded/libnaomi (fadc8536d3c115b53277c50dca5d001dfbccc30d) y KallistiOS.
-- La ejecución [Actions #45](https://github.com/cherevida-creator/nes-naomi/actions/runs/40323173443) pasó los tests de controles/prioridad Naomi y compiló los objetos SH-4 del controlador y el puente KallistiOS. No compila ni enlaza el juego completo.
+El ejecutable parte de `Dreamcast-Projects/sm64-port-lat` fijado en `e4574b577609a51c6b7ca7914d2f25436831eede`. Conserva los recursos extraídos de la ROM original, incluidos gráficos, niveles, música y efectos. La adaptación selecciona el controlador JVS de Player 1: joystick para el stick N64, botones arcade 1–6 para A/B/Z/C-left/C-right/R y botón Start para Start.
 
-### Paquete candidato y diagnóstico
+## Compilación completa
 
-El BIN recibido mide 12.549.084 bytes y `rominfo` reconoce una imagen Naomi 1, con una sección de carga y punto de entrada `0x8c020000`. Esto valida la cabecera y la estructura del contenedor, pero no que el payload sea un build Naomi 2 que arranque.
+Se compiló el juego completo con KallistiOS 2.2.1 y GCC SH-4 15.1.0 para la subarquitectura Naomi. Para repetir la compilación, instala KallistiOS, coloca una ROM base propia como `baserom.us.z64` en la raíz del repositorio (o indica `SM64_BASEROM`) y ejecuta:
 
-Cambiar la etiqueta del encabezado a Naomi 2 no altera el payload. Al probar el candidato con la selección Naomi 2 de Flycast, el usuario reportó `Fatal: SH4 exception when blocked`; por tanto, cambiar la cabecera no corrige el fallo. El origen exacto de la excepción todavía no está localizado.
+```bash
+export KOS_SUBARCH=naomi
+source /opt/toolchains/dc/kos/environ.sh
+bash tools/build_sm64_naomi2.sh
+```
 
-La ROM base y los assets extraídos se usan solo localmente; no se suben a GitHub ni se pasan a Actions. La compilación completa del juego para Naomi 2 y el arranque sin excepciones aún no están verificados.
+El script fija las revisiones de SM64 y libnaomi, aplica el overlay del controlador, compila el ELF/RAW completo y crea `mario64-naomi2.bin` con `naomibintool` como plataforma `Naomi2`. La ROM base y los recursos comerciales permanecen locales y no se suben al repositorio.
 
-### Límite de verificación
+## Estado del BIN generado
 
-El diagnóstico de controles es un programa independiente de libnaomi: muestra el estado JVS y sirve para comprobar Player 1, pero no contiene SM64. El BIN de Mario falla al ejecutarse en Flycast y no se ha probado en hardware Naomi 2. Por tanto, no se declara funcional el port de Mario. Tampoco se ha probado la ruta real de carga por NetDIMM en una máquina.
+El paquete local fue releído por `naomibintool`: declara `Naomi2`, contiene el título `Super Mario 64`, tiene un segmento de 12.498.372 bytes cargado en `0x8c020000` y punto de entrada `0x8c020000`. Su SHA-256 actual es `54df927ed4019dedfd5857924805d0782362a9241b19d69ddb097384c27c988e`.
 
-El registro Flycast más reciente reconoce `Super Mario 64` y selecciona el BIOS Naomi 2. Solo informa de que no encuentra `epr-23607c.ic27`; no contiene `Fatal: SH4 exception when blocked` ni registros de excepción. Por tanto, este archivo no permite atribuir el fallo del juego a una excepción SH-4. Flycast se cierra limpiamente en el propio registro.
+Esto confirma que se compiló y empaquetó el juego completo; no confirma que Flycast o una placa Naomi 2 lo hayan arrancado. El último registro aportado de Flycast reconoce el juego y selecciona Naomi 2, pero no encuentra `epr-23607c.ic27` y se cierra antes de informar de ejecución del payload. No se dispone de los archivos del BIOS Naomi 2 en este entorno. Por esa razón el BIN se mantiene como **compilado, arranque pendiente de verificar**, no como funcional.
 
-El BIN candidato declara su sección y punto de entrada en `0x8c020000`; el Makefile de libnaomi usa por defecto `0x0c021000` en sus ejemplos. Es una diferencia que merece verificarse al integrar el cargador Naomi con el ejecutable KOS: `0x8c...` es un alias P1 de RAM física `0x0c...`, así que comparar solo los números no demuestra por sí mismo que el encabezado sea inválido ni identifica la causa del error 01. Cambiar la etiqueta `NAOMI` por `Naomi2` tampoco corrige el payload. Hace falta generar el paquete con direcciones coherentes y arrancarlo en Flycast para confirmar o descartar esta hipótesis.
+## CI y comprobación pendiente
 
-En el entorno de trabajo actual no están instalados Docker, `sh-elf-gcc` ni KallistiOS (`KOS_BASE`). Al intentar reconstruir el upstream con `make TARGET_DC=1`, Make termina en `Makefile:952: /Makefile.rules: No such file or directory`. Así que aquí no se ha regenerado un BIN de Mario corregido.
-
-Para cerrar esa validación hay que localizar y corregir la excepción SH-4, compilar el juego completo para Naomi 2 y comprobar vídeo, audio AICA y controles en Flycast o hardware. Hasta entonces, trátese como candidato experimental, no como entrega funcional.
+La GitHub Action existente comprueba la integración de controles y compila el puente SH-4; no contiene una ROM base ni produce el juego completo. No se añade la ROM ni los recursos comerciales a GitHub. Para cerrar la verificación hace falta ejecutar el BIN generado en Flycast con un BIOS Naomi 2 completo y confirmar que aparece el juego, hay vídeo y audio, y responden el joystick, los seis botones y Player 1. La carga real por NetDIMM tampoco se ha verificado.
