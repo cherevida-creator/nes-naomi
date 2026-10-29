@@ -7,6 +7,7 @@ LIBNAOMI_COMMIT=fadc8536d3c115b53277c50dca5d001dfbccc30d
 UPSTREAM="$ROOT/vendor/sm64-port-lat"
 LIBNAOMI="$ROOT/vendor/libnaomi"
 ROM="${SM64_BASEROM:-$ROOT/baserom.us.z64}"
+NAOMI2_LOAD_ADDRESS=0x8c020000
 
 if [[ -z "${KOS_BASE:-}" || ! -f "$KOS_BASE/environ.sh" ]]; then
   echo "ERROR: load the KallistiOS environment first (KOS_BASE/environ.sh)." >&2
@@ -30,10 +31,15 @@ git -C "$LIBNAOMI" checkout --detach "$LIBNAOMI_COMMIT"
 git -C "$UPSTREAM" reset --hard "$UPSTREAM_COMMIT"
 git -C "$LIBNAOMI" reset --hard "$LIBNAOMI_COMMIT"
 
+# environ.sh may have been sourced before KOS_SUBARCH was set to Naomi.
+# Replace any stale Dreamcast LOAD_OFFSET and force the documented Naomi address.
 export KOS_SUBARCH=naomi
 KOS_CFLAGS="${KOS_CFLAGS:-}"
 KOS_CFLAGS="${KOS_CFLAGS//-D_arch_sub_pristine/-D_arch_sub_naomi}"
 export KOS_CFLAGS
+KOS_LDFLAGS="$(sed -E 's/(^|[[:space:]])-Wl,--defsym=LOAD_OFFSET=[^[:space:]]+//g' <<< "${KOS_LDFLAGS:-}")"
+KOS_LDFLAGS="${KOS_LDFLAGS} -Wl,--defsym=LOAD_OFFSET=$NAOMI2_LOAD_ADDRESS"
+export KOS_LDFLAGS
 bash "$ROOT/tools/build_gldc_naomi.sh"
 
 ln -sfn "$(realpath "$ROM")" "$UPSTREAM/baserom.us.z64"
@@ -64,10 +70,14 @@ if [[ -z "$LOAD_ADDRESS" || -z "$ENTRY_POINT" ]]; then
   echo "ERROR: could not determine the SH-4 ELF load address and entry point." >&2
   exit 4
 fi
+if [[ "${LOAD_ADDRESS,,}" != "$NAOMI2_LOAD_ADDRESS" ]]; then
+  echo "ERROR: Naomi 2 ELF load address is $LOAD_ADDRESS; expected $NAOMI2_LOAD_ADDRESS." >&2
+  echo "The KOS link did not use the Naomi subarchitecture flags." >&2
+  exit 5
+fi
 "$NAOMI_BINTOOL" build "$ROOT/mario64-naomi2.bin" \
   -p Naomi2 -d "SM64 Naomi Port" -t "Super Mario 64" \
   -b "$BIN:$LOAD_ADDRESS" -s "$ENTRY_POINT"
-"$NAOMI_BINTOOL" read "$ROOT/mario64-naomi2.bin"
 HEADER_INFO="$("$NAOMI_BINTOOL" read "$ROOT/mario64-naomi2.bin")"
 grep -q "RAM Offset: ${LOAD_ADDRESS#0x}" <<<"$HEADER_INFO"
 grep -q "Entry point: ${ENTRY_POINT#0x}" <<<"$HEADER_INFO"
