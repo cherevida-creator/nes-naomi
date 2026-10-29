@@ -1,26 +1,22 @@
-name: SM64 Naomi 2 controller integration
+name: SM64 Naomi 2 controller and SH-4 integration
 
 on:
   push:
     paths:
       - ".github/workflows/sm64-naomi2.yml"
-      - "port/controller_naomi.c"
-      - "port/controller_naomi.h"
-      - "port/sm64_naomi_controls.h"
-      - "port/sm64_naomi_jvs.h"
-      - "port/sm64_naomi_oscont.h"
-      - "tools/integrate_sm64_naomi.py"
+      - "port/**"
+      - "tools/**"
+      - "sm64-naomi2-smoke/**"
       - "tests/test_sm64_naomi_controls.c"
+      - "tests/test_mark_naomi2_header.py"
   pull_request:
     paths:
       - ".github/workflows/sm64-naomi2.yml"
-      - "port/controller_naomi.c"
-      - "port/controller_naomi.h"
-      - "port/sm64_naomi_controls.h"
-      - "port/sm64_naomi_jvs.h"
-      - "port/sm64_naomi_oscont.h"
-      - "tools/integrate_sm64_naomi.py"
+      - "port/**"
+      - "tools/**"
+      - "sm64-naomi2-smoke/**"
       - "tests/test_sm64_naomi_controls.c"
+      - "tests/test_mark_naomi2_header.py"
   workflow_dispatch:
 
 permissions:
@@ -28,58 +24,67 @@ permissions:
 
 jobs:
   sm64-controller-host:
-    name: Patch pinned SM64 and compile controller on host
+    name: Patch pinned SM64 and test Player 1 controls
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Checkout pinned Dreamcast SM64 source
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           repository: Dreamcast-Projects/sm64-port-lat
           ref: e4574b577609a51c6b7ca7914d2f25436831eede
           path: upstream/sm64
-      - name: Checkout pinned libnaomi headers
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           repository: DragonMinded/libnaomi
           ref: fadc8536d3c115b53277c50dca5d001dfbccc30d
           path: libnaomi
-      - name: Apply Naomi Player 1 controller to upstream registry
-        run: python3 tools/integrate_sm64_naomi.py --upstream upstream/sm64
-      - name: Verify registry and compile integrated controller
+      - name: Apply Naomi controller and KOS Maple overlay
+        run: python3 tools/integrate_sm64_naomi.py --upstream upstream/sm64 --libnaomi libnaomi
+      - name: Verify Naomi takes precedence over Dreamcast
         run: |
-          grep -Fq '&controller_naomi' upstream/sm64/src/pc/controller/controller_entry_point.c
-          cc -std=c11 -Wall -Wextra -Werror -DTARGET_NAOMI             -Iupstream/sm64/include -Iupstream/sm64/src/pc/controller             -Ilibnaomi/libnaomi -Iport             -c upstream/sm64/src/pc/controller/controller_naomi.c             -o /tmp/sm64-controller-host.o
-      - name: Compile and run Player 1 mapping tests
-        run: |
-          cc -std=c11 -Wall -Wextra -Werror -Iport -Ilibnaomi/libnaomi             tests/test_sm64_naomi_controls.c -o /tmp/test-sm64-controls
-          /tmp/test-sm64-controls
+          python3 - <<'PY'
+          from pathlib import Path
 
-  sm64-controller-sh4:
-    name: SH-4 compile integrated SM64 controller with KallistiOS toolchain
+          source = Path("upstream/sm64/src/pc/controller/controller_entry_point.c").read_text()
+          includes = source.split("#if defined(_WIN32)", 1)[1].split("#endif", 1)[0]
+          registry = source.split("static struct ControllerAPI *controller_implementations[] = {", 1)[1].split("\n};", 1)[0]
+          assert includes.index("#elif defined(TARGET_NAOMI)") < includes.index("#elif defined(TARGET_DC)")
+          assert registry.index("#elif defined(TARGET_NAOMI)") < registry.index("#elif defined(TARGET_DC)")
+          assert '&controller_naomi' in registry
+          PY
+      - name: Compile adapter and run control tests
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -DTARGET_NAOMI -Iupstream/sm64/include -Iupstream/sm64/src/pc/controller -Iport -c upstream/sm64/src/pc/controller/controller_naomi.c -o /tmp/sm64-controller-host.o
+          cc -std=c11 -Wall -Wextra -Werror -Ilibnaomi/libnaomi -Iport tests/test_sm64_naomi_controls.c -o /tmp/test-sm64-controls
+          /tmp/test-sm64-controls
+          python3 tests/test_mark_naomi2_header.py
+
+  sm64-naomi-sh4:
+    name: Compile Naomi JVS bridge and controller with KallistiOS SH-4
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Checkout pinned Dreamcast SM64 source
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           repository: Dreamcast-Projects/sm64-port-lat
           ref: e4574b577609a51c6b7ca7914d2f25436831eede
           path: upstream/sm64
-      - name: Checkout pinned libnaomi headers
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           repository: DragonMinded/libnaomi
           ref: fadc8536d3c115b53277c50dca5d001dfbccc30d
           path: libnaomi
-      - name: Apply Naomi Player 1 controller to upstream registry
-        run: python3 tools/integrate_sm64_naomi.py --upstream upstream/sm64
-      - name: Cross-compile and verify SH-4 object
+      - name: Apply Naomi controller and KOS Maple overlay
+        run: python3 tools/integrate_sm64_naomi.py --upstream upstream/sm64 --libnaomi libnaomi
+      - name: Compile SH-4 objects for Naomi subarchitecture
         run: |
-          docker run --rm             -v "$GITHUB_WORKSPACE:/src"             -w /src             einsteinx2/dcdev-kos-toolchain:gcc-9             /bin/bash -c '
-              set -eu
-              command -v sh-elf-gcc
-              sh-elf-gcc --version | head -n 1
-              sh-elf-gcc -std=c11 -Wall -Wextra -Werror -ffreestanding                 -DTARGET_NAOMI                 -Iupstream/sm64/include -Iupstream/sm64/src/pc/controller                 -Ilibnaomi/libnaomi -Iport                 -c upstream/sm64/src/pc/controller/controller_naomi.c                 -o /tmp/sm64-controller-sh4.o
-              sh-elf-readelf -h /tmp/sm64-controller-sh4.o | grep -E "Machine:.*(SH|SuperH)"
-            '
+          docker run --rm -e KOS_SUBARCH=naomi -v "$GITHUB_WORKSPACE:/src" -w /src einsteinx2/dcdev-kos-toolchain:gcc-9 /bin/bash -c '
+            set -eu
+            command -v sh-elf-gcc
+            sh-elf-gcc --version | head -n 1
+            SH4_KOS_FLAGS="-DTARGET_DC -DTARGET_NAOMI -D__NAOMI__ -D_arch_dreamcast=1 -D_arch_sub_naomi=1 -I/opt/toolchains/dc/kos/include -I/opt/toolchains/dc/kos/kernel/arch/dreamcast/include -I/opt/toolchains/dc/kos/addons/include"
+            sh-elf-gcc -std=c11 -Wall -Wextra -Werror -ffreestanding $SH4_KOS_FLAGS -Iupstream/sm64/include -Iupstream/sm64/src/pc/controller -Iport -c upstream/sm64/src/pc/controller/controller_naomi.c -o /tmp/sm64-controller-naomi.o
+            sh-elf-gcc -std=c11 -Wall -Wextra -Werror -ffreestanding $SH4_KOS_FLAGS -Iupstream/sm64/src/pc/controller -c upstream/sm64/src/pc/controller/maple_naomi_kos.c -o /tmp/sm64-maple-naomi.o
+            sh-elf-readelf -h /tmp/sm64-controller-naomi.o | grep -E "Machine:.*(SH|SuperH)"
+            sh-elf-readelf -h /tmp/sm64-maple-naomi.o | grep -E "Machine:.*(SH|SuperH)"
+          '
