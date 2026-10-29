@@ -37,8 +37,11 @@ export KOS_SUBARCH=naomi
 KOS_CFLAGS="${KOS_CFLAGS:-}"
 KOS_CFLAGS="${KOS_CFLAGS//-D_arch_sub_pristine/-D_arch_sub_naomi}"
 export KOS_CFLAGS
-KOS_LDFLAGS="$(sed -E 's/(^|[[:space:]])-Wl,--defsym=LOAD_OFFSET=[^[:space:]]+//g' <<< "${KOS_LDFLAGS:-}")"
-KOS_LDFLAGS="${KOS_LDFLAGS} -Wl,--defsym=LOAD_OFFSET=$NAOMI2_LOAD_ADDRESS"
+KOS_LDFLAGS="$(sed -E \
+  -e 's/(^|[[:space:]])-Wl,--defsym=LOAD_OFFSET=[^[:space:]]+//g' \
+  -e 's/(^|[[:space:]])-Wl,-Ttext=0x8c[[:xdigit:]]+//g' \
+  <<< "${KOS_LDFLAGS:-}")"
+KOS_LDFLAGS="${KOS_LDFLAGS} -Wl,--defsym=LOAD_OFFSET=$NAOMI2_LOAD_ADDRESS -Wl,-Ttext=$NAOMI2_LOAD_ADDRESS"
 export KOS_LDFLAGS
 bash "$ROOT/tools/build_gldc_naomi.sh"
 
