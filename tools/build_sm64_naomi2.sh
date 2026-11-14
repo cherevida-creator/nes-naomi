@@ -8,6 +8,7 @@ UPSTREAM="$ROOT/vendor/sm64-port-lat"
 LIBNAOMI="$ROOT/vendor/libnaomi"
 ROM="${SM64_BASEROM:-$ROOT/baserom.us.z64}"
 NAOMI2_LOAD_ADDRESS=0x8c020000
+OUTPUT_BIN="${SM64_OUTPUT_BIN:-$ROOT/mario64-naomi2.bin}"
 
 if [[ -z "${KOS_BASE:-}" || ! -f "$KOS_BASE/environ.sh" ]]; then
   echo "ERROR: load the KallistiOS environment first (KOS_BASE/environ.sh)." >&2
@@ -48,6 +49,8 @@ bash "$ROOT/tools/build_gldc_naomi.sh"
 ln -sfn "$(realpath "$ROM")" "$UPSTREAM/baserom.us.z64"
 python3 "$ROOT/tools/integrate_sm64_naomi.py" --upstream "$UPSTREAM" --libnaomi "$LIBNAOMI" --source "$ROOT"
 
+make -C "$UPSTREAM/tools" clean all
+make -C "$UPSTREAM" TARGET_DC=1 clean
 make -C "$UPSTREAM" TARGET_DC=1 -j"$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2)" elf
 
 NAOMI_BINTOOL_SOURCE="$ROOT/vendor/naomibintool-naomi2.c"
@@ -78,10 +81,10 @@ if [[ "${LOAD_ADDRESS,,}" != "$NAOMI2_LOAD_ADDRESS" ]]; then
   echo "The KOS link did not use the Naomi subarchitecture flags." >&2
   exit 5
 fi
-"$NAOMI_BINTOOL" build "$ROOT/mario64-naomi2.bin" \
-  -p Naomi2 -d "SM64 Naomi Port" -t "Super Mario 64" \
+"$NAOMI_BINTOOL" build "$OUTPUT_BIN" \
+  -p "${SM64_PLATFORM_SIGNATURE:-Naomi2}" -d "SM64 Naomi Port" -t "Super Mario 64" \
   -b "$BIN:$LOAD_ADDRESS" -s "$ENTRY_POINT"
-HEADER_INFO="$("$NAOMI_BINTOOL" read "$ROOT/mario64-naomi2.bin")"
+HEADER_INFO="$("$NAOMI_BINTOOL" read "$OUTPUT_BIN")"
 grep -q "RAM Offset: ${LOAD_ADDRESS#0x}" <<<"$HEADER_INFO"
 grep -q "Entry point: ${ENTRY_POINT#0x}" <<<"$HEADER_INFO"
-sha256sum "$ROOT/mario64-naomi2.bin"
+sha256sum "$OUTPUT_BIN"

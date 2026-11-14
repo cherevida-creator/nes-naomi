@@ -40,6 +40,59 @@ def main() -> None:
     checked_revision(upstream, UPSTREAM_COMMIT, "SM64 upstream")
     checked_revision(libnaomi, LIBNAOMI_COMMIT, "libnaomi")
 
+    # Upstream used uint16_t-scaled pointer arithmetic here, advancing twice as far
+    # as the byte count and eventually writing past the AICA stream buffer.
+    audio = upstream / "src/pc/audio/dc_audio_kos.c"
+    audio_text = replace_once(
+        audio.read_text(),
+        "void *snd_buf = snd_buffer_internal + audio_frames_generated_cur * (SAMPLES_HIGH * DC_AUDIO_CHANNELS * sizeof(short));",
+        "void *snd_buf = (char *)snd_buffer_internal + audio_frames_generated_cur * (SAMPLES_HIGH * DC_AUDIO_CHANNELS * sizeof(short));",
+        "AICA stream buffer byte offset",
+    )
+    audio_text = replace_once(
+        audio_text,
+        "    void *snd_buf = (char *)snd_buffer_internal + audio_frames_generated_cur * (SAMPLES_HIGH * DC_AUDIO_CHANNELS * sizeof(short));",
+        "    size_t audio_write_offset = (size_t)audio_frames_generated_cur * SAMPLES_HIGH * DC_AUDIO_CHANNELS * sizeof(short);\n    size_t audio_write_size = DC_AUDIO_GIVEN_BUFFERS * SAMPLES_HIGH * DC_AUDIO_CHANNELS * sizeof(short);\n    if (audio_write_offset + audio_write_size > sizeof(snd_buffer_internal)) {\n        audio_frames_generated_cur = 0;\n        audio_write_offset = 0;\n    }\n    void *snd_buf = (char *)snd_buffer_internal + audio_write_offset;",
+        "AICA audio buffer bounds",
+    )
+    audio_text = replace_once(
+        audio_text,
+        "static int audio_frames_generated_cur;",
+        "static int audio_frames_generated_cur;\nstatic int audio_stream_started;\nstatic mutex_t audio_stream_mutex;",
+        "AICA stream state",
+    )
+    audio_text = replace_once(
+        audio_text,
+        "    return snd_buffer_internal;\n}\n\nstatic bool audio_dc_init(void) {",
+        "    return snd_buffer_internal;\n}\n\nstatic void *audio_stream_poll_thread(void *param) {\n    (void)param;\n    for (;;) {\n        mutex_lock(&audio_stream_mutex);\n        if (audio_stream_started) {\n            int ret = snd_stream_poll(shnd);\n            if (ret) {\n                printf(\"SND: %d\\n\", ret);\n                fflush(stdout);\n            }\n        }\n        mutex_unlock(&audio_stream_mutex);\n        thd_sleep(1);\n    }\n    return NULL;\n}\n\nstatic bool audio_dc_init(void) {",
+        "KOS audio polling thread",
+    )
+    audio_text = replace_once(
+        audio_text,
+        "    audio_frames_generated_cur = 0;\n    return true;",
+        "    audio_frames_generated_cur = 0;\n    audio_stream_started = 0;\n    if (mutex_init(&audio_stream_mutex, MUTEX_TYPE_NORMAL)) return false;\n    if (thd_create(true, audio_stream_poll_thread, NULL) == NULL) return false;\n    return true;",
+        "AICA stream start reset",
+    )
+    audio_text = replace_once(
+        audio_text,
+        "    if (audio_frames_generated_total > 15) {\n        snd_stream_start(shnd, DC_AUDIO_FREQUENCY, DC_STEREO_AUDIO);\n    }",
+        "    if (audio_frames_generated_total > 15 && !audio_stream_started) {\n        snd_stream_start(shnd, DC_AUDIO_FREQUENCY, DC_STEREO_AUDIO);\n        audio_stream_started = 1;\n    }",
+        "start AICA stream only once",
+    )
+    audio_text = replace_once(
+        audio_text,
+        "static void audio_dc_play(UNUSED const uint8_t *buf, UNUSED size_t len) {",
+        "static void audio_dc_play(UNUSED const uint8_t *buf, UNUSED size_t len) {\n    mutex_lock(&audio_stream_mutex);",
+        "lock AICA producer buffer",
+    )
+    audio_text = replace_once(
+        audio_text,
+        "    int ret = snd_stream_poll(shnd);\n    if (ret) {\n        printf(\"SND: %d\\n\", ret);\n        fflush(stdout);\n    }\n    thd_pass();",
+        "    mutex_unlock(&audio_stream_mutex);\n    thd_pass();",
+        "move AICA polling to KOS thread",
+    )
+    audio.write_text(audio_text)
+
     controller_dir = upstream / "src/pc/controller"
     shutil.copy2(source / "port/controller_naomi.c", controller_dir / "controller_naomi.c")
     shutil.copy2(source / "port/controller_naomi.h", controller_dir / "controller_naomi.h")
@@ -104,7 +157,7 @@ def main() -> None:
 
     makefile = upstream / "Makefile"
     text = replace_once(makefile.read_text(), "PLATFORM_CFLAGS  := $(KOS_CFLAGS) -DTARGET_DC -DNDEBUG -Wall -Wextra -g3", "PLATFORM_CFLAGS  := $(KOS_CFLAGS) -DTARGET_DC -DTARGET_NAOMI -D__NAOMI__ -DNDEBUG -Wall -Wextra -g3", "Naomi KOS target flags")
-    text = replace_once(text, "GFX_LDFLAGS += -lGL -lAL -lm", "GFX_LDFLAGS += -lGL -lm", "KOS native audio linker flags")
+    text = replace_once(text, "GFX_LDFLAGS += -lGL -lAL -lm", "GFX_LDFLAGS += -lGL -lm -Wl,-Map=$(BUILD_DIR)/sm64.naomi.map", "KOS native audio linker flags")
     makefile.write_text(text)
     print(f"Applied Naomi/KOS overlay to SM64 {UPSTREAM_COMMIT}")
 
