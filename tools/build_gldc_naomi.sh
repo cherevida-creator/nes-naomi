@@ -46,6 +46,8 @@ if sample_count < 1:
 path.write_text(source)
 PY
 
+python3 "$ROOT/tools/apply_gldc_mirror.py" --root "$GLDC"
+
 TOOLCHAIN="$ROOT/vendor/kos-gldc-toolchain.cmake"
 cat > "$TOOLCHAIN" <<'CMAKE'
 set(CMAKE_SYSTEM_NAME Generic)
