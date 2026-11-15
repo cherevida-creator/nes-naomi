@@ -51,6 +51,10 @@ python3 "$ROOT/tools/integrate_sm64_naomi.py" --upstream "$UPSTREAM" --libnaomi 
 
 python3 "$ROOT/tools/apply_sm64_graphics.py" --upstream "$UPSTREAM"
 
+if [[ "${SM64_NAOMI_RUNTIME_EXPERIMENTAL:-0}" == 1 ]]; then
+  python3 "$ROOT/tools/apply_sm64_runtime.py" --upstream "$UPSTREAM" --source "$ROOT"
+fi
+
 make -C "$UPSTREAM/tools" clean all
 make -C "$UPSTREAM" TARGET_DC=1 clean
 make -C "$UPSTREAM" TARGET_DC=1 -j"$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2)" elf
