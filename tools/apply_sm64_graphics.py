@@ -53,9 +53,14 @@ if stage != 'sky':
     start=t.index('        int j, k;',t.index('static void gfx_sp_tri1('))
     end=t.index('        /*@Error: Transition Hack */',start)
     t=t[:start]+'''        /* Fixed-function RGB and alpha inputs are independent. The old loop
-           overwrote RGB with later inputs and never selected the alpha source. */
+           never selected the alpha source. Keep its last mapped RGB fallback
+           for unsupported multi-input materials such as the title head. */
         struct RGBA color = {255, 255, 255, 255};
-        switch (comb->shader_input_mapping[0][0]) {
+        uint8_t rgb_source = 0;
+        for (int input = 0; input < num_inputs; ++input)
+            if (comb->shader_input_mapping[0][input])
+                rgb_source = comb->shader_input_mapping[0][input];
+        switch (rgb_source) {
             case CC_PRIM: color = rdp.prim_color; break;
             case CC_SHADE: color = v_arr[i]->color; break;
             case CC_ENV: color = rdp.env_color; break;
@@ -91,3 +96,13 @@ for old,new in [
     t=t.replace(old,new)
 f.write_text(t)
 print('Restored original shadow UV range')
+
+# The fast 2D path must apply the current material rather than inherit the
+# previous 3D draw's texenv/alpha test. Bind its own client array base.
+g=root/'src/pc/gfx/gfx_gldc.c';s=g.read_text()
+old='    dc_fast_t *tris = buf_vbo;\n\n    glEnable(GL_TEXTURE_2D);'
+new='    dc_fast_t *tris = buf_vbo;\n    cur_buf = tris;\n    gfx_opengl_apply_shader(cur_shader);'
+assert s.count(old)==1
+s=s.replace(old,new)
+g.write_text(s)
+print('Applied 2D material state and preserved multi-input RGB fallback')
