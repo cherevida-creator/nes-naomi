@@ -50,6 +50,7 @@ ln -sfn "$(realpath "$ROM")" "$UPSTREAM/baserom.us.z64"
 python3 "$ROOT/tools/integrate_sm64_naomi.py" --upstream "$UPSTREAM" --libnaomi "$LIBNAOMI" --source "$ROOT"
 
 python3 "$ROOT/tools/apply_sm64_graphics.py" --upstream "$UPSTREAM"
+if [[ "${SM64_GRAPHICS_R3:-0}" == 1 ]]; then python3 "$ROOT/tools/apply_sm64_r3.py" sm64 "$UPSTREAM"; fi
 
 if [[ "${SM64_NAOMI_RUNTIME_EXPERIMENTAL:-0}" == 1 ]]; then
   python3 "$ROOT/tools/apply_sm64_runtime.py" --upstream "$UPSTREAM" --source "$ROOT"
