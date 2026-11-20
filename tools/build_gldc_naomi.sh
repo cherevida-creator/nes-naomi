@@ -47,6 +47,7 @@ path.write_text(source)
 PY
 
 python3 "$ROOT/tools/apply_gldc_mirror.py" --root "$GLDC"
+if [[ "${SM64_GRAPHICS_R3:-0}" == 1 ]]; then python3 "$ROOT/tools/apply_sm64_r3.py" gldc "$GLDC"; fi
 
 TOOLCHAIN="$ROOT/vendor/kos-gldc-toolchain.cmake"
 cat > "$TOOLCHAIN" <<'CMAKE'
